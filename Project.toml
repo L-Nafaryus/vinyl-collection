@@ -1,0 +1,9 @@
+name = "vinylList"
+uuid = "bcb86eae-7ce6-48e4-8e16-daebf5b7949f"
+authors = ["L-Nafaryus <l.nafaryus@gmail.com>"]
+version = "0.1.0"
+
+[deps]
+HTTP = "cd3eb016-35fb-5094-929b-558a96fad6f3"
+JSON = "682c06a0-de6a-54ab-a142-c8b1cf79cde6"
+LaTeXStrings = "b964fa9f-0449-5b57-a5c2-d3ea65f4040f"
