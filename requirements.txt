@@ -1,0 +1,2 @@
+peewee
+python3-discogs-client
