@@ -4,7 +4,12 @@ db = SqliteDatabase("vinyl.db")
 
 class BaseModel(Model):
     class Meta:
-        db = db
+        database = db
+
+class Master(BaseModel):
+    master_id = TextField(unique = True)
+    year = IntegerField()
+    url = TextField()
 
 class Release(BaseModel):
     release_id = TextField(unique = True)
@@ -12,10 +17,7 @@ class Release(BaseModel):
     country = TextField()
     title = TextField()
     year = IntegerField()
-    master = ForeignKeyField(Master, backref = "releases")
+    master = IntegerField(null = True) 
     url = TextField()
     
-class Master(BaseModel):
-    master_id = TextField(unique = True)
-    year = IntegerField()
-    url = TextField()
+
