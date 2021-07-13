@@ -1,6 +1,7 @@
 from peewee import *
+import vinyl
 
-db = SqliteDatabase("vinyl.db")
+db = SqliteDatabase(vinyl.ENV["VINYL_DB"])
 
 class BaseModel(Model):
     class Meta:

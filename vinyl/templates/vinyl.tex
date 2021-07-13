@@ -1,0 +1,18 @@
+\documentclass{article}
+
+\usepackage[T2A]{fontenc}
+
+\usepackage{geometry}
+\geometry{left = 2cm, right = 2cm, top = 0.5cm, bottom = 1.5cm}
+
+\begin{document}
+    \begin{longtable}{l l l l}
+    \hline
+    ID & Artist & Year & Title \\
+    \hline
+    \BLOCK{ for item in items }
+    \VAR{ item.id } & \VAR{ item.artist } & \VAR{ item.year } & \VAR{ item.title } \\
+    \hline
+    \BLOCK{ endfor }
+    \end{longtable}
+\end{document}

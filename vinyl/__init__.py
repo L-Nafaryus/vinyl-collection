@@ -1,8 +1,9 @@
-from vinyl.db import db, Master, Release
 import discogs_client
 #import pylatex
 import logging
 from dotenv import dotenv_values
+import os
+import jinja2
 
 logging.basicConfig(
     level = logging.INFO,
@@ -14,149 +15,164 @@ logging.basicConfig(
 
 logger = logging.getLogger("vinyl")
 
-ENV = dotenv_values(".env")
+def setupEnvValues():
+    ROOT = os.path.abspath(".")
+    BUILD = os.path.join(ROOT, "build")
+    LOG = os.path.join(ROOT, "logs")
 
+    env = {
+        "ROOT": ROOT,
+        "BUILD": BUILD,
+        "LOG": LOG,
+        "VINYL_DB": os.path.join(BUILD, "vinyl.db"),
+        "VINYL_PDF": os.path.join(BUILD, "vinyl.pdf")
+    }
 
-class Collection:
-    def __init__(self):
-        self.db = db
-        db.create_tables([Master, Release])
+    envfile = os.path.join(ROOT, ".env")
 
-        self.client = self._client()
+    if os.path.exists(envfile):
+        env.update(dotenv_values(envfile))
 
-    def _client(self):
-        if "TOKEN" in ENV.keys():
-            client = discogs_client.Client(
-                "vinyl-collection/1.0",
-                consumer_key = ENV["CONSUMER_KEY"],
-                consumer_secret = ENV["CONSUMER_SECRET"],
-                token = ENV["TOKEN"],
-                secret = ENV["SECRET"]
-            )
+    return env
 
-        else:
-            client = discogs_client.Client("vinyl-collection/1.0")
-
-        return client
-
-    def receive(self, user: str, overwrite = False):
-        try:
-            u = client.user(user)
-
-        except Exception as e:
-            logger.error(e)
-            exit(1)
-
-        clearline = "\033[A"
-        stats = [0, 0, 0]
-
-        releases = u.collection_folders[0].releases
-        count = len(releases)
-
-        logging.info(f"Found { count } releases")
-
-        if not count:
-            logging.info("Exiting ..")
-            exit(1)
-
-        for n, r in enumerate(releases):
-            release = r.release
-            release_id = r.id
-            master = release.master
-            master_id = None
-
-            if master is not None:
-                master_id = master.id
-                query = Master.select().where(Master.master_id == master_id)
-                
-                if not query.exists():
-                    Master.create(
-                        master_id = master_id,
-                        year = master.main_release.year,
-                        url = master.url
-                    )
-
-                elif overwrite:
-                    Master.update(
-                        master_id = master_id,
-                        year = master.main_release.year,
-                        url = master.url
-                    )
-
-            query = Release.select().where(Release.release_id == release_id)
-
-            if not query.exists():
-                Release.create(
-                    release_id = r.id,
-                    artist = release.artists[0].name,
-                    country = release.country,
-                    title = release.title,
-                    year = release.year,
-                    master = master_id,
-                    url = release.url
-                )
-                stats[0] += 1
-            
-            elif overwrite:
-                Release.update(
-                    release_id = r.id,
-                    artist = release.artists[0].name,
-                    country = release.country,
-                    title = release.title,
-                    year = release.year,
-                    master = master_id,
-                    url = release.url
-                )
-                stats[1] += 1
-
-            else:
-                stats[2] += 1
-
-            logging.info(f"Received { n + 1 } from { count } ({ stats[0] } added, { stats[1] } updated, { stats[2] } skipped) { clearline }")
-
-        logging.info("Done.")
-
-    def toPDF(self):
-        releases = list(Release.select().dicts())
-        data = {}
-
-        doc = pylatex.Document(
-            page_numbers = True, 
-            geometry_options = {
-                "left": "2cm",
-                "right": "2cm",
-                "top": "0.5cm",
-                "bottom": "1.5cm"
-            }
+def setupClient():
+    if "TOKEN" in ENV.keys():
+        client = discogs_client.Client(
+            "vinyl-collection/1.0",
+            consumer_key = ENV["CONSUMER_KEY"],
+            consumer_secret = ENV["CONSUMER_SECRET"],
+            token = ENV["TOKEN"],
+            secret = ENV["SECRET"]
         )
 
-        header = pylatex.PageStyle("header")
-        
-        with header.create(pylatex.Foot("R")):
-            header.append(pylatex.simple_page_number())
-        
-        doc.preamble.append(header)
-        doc.change_document_style("header")
+        logger.info("Using client with OAuth")
 
-        with doc.create(pylatex.LongTable("l l l l")) as table:
-            table.add_hline()
-            table.add_row(["ID", "Artist", "Year", "Title"])
-            table.add_hline()
-            table.end_table_header()
+    else:
+        client = discogs_client.Client("vinyl-collection/1.0")
 
-            table.add_hline()
-            table.end_table_footer()
+        logger.info("Using naked client")
 
-            table.add_hline()
-            table.end_table_last_footer()
+    return client
+
+def receive(user: str, overwrite = False):
+    try:
+        u = client.user(user)
+
+    except Exception as e:
+        logger.error(e)
+        exit(1)
+
+    clearline = "\033[A"
+    stats = [0, 0, 0]
+
+    releases = u.collection_folders[0].releases
+    count = len(releases)
+
+    logging.info(f"Found { count } releases")
+
+    if not count:
+        logging.info("Exiting ..")
+        exit(1)
+
+    for n, r in enumerate(releases):
+        release = r.release
+        release_id = r.id
+        master = release.master
+        master_id = None
+
+        if master is not None:
+            master_id = master.id
+            query = Master.select().where(Master.master_id == master_id)
             
-            buf = data[0]["artist"]
-            for n in range(len(data)):
-                if buf != data[n]["artist"]:
-                    table.add_hline()
+            if not query.exists():
+                Master.create(
+                    master_id = master_id,
+                    year = master.main_release.year,
+                    url = master.url
+                )
 
-                table.add_row([str(n + 1), data[n]["artist"], data[n]["year"], data[n]["title"]])
-                buf = data[n]["artist"]
+            elif overwrite:
+                Master.update(
+                    master_id = master_id,
+                    year = master.main_release.year,
+                    url = master.url
+                )
 
-        doc.generate_tex(os.path.join(buildpath, "collection"))
+        query = Release.select().where(Release.release_id == release_id)
 
+        if not query.exists():
+            Release.create(
+                release_id = r.id,
+                artist = release.artists[0].name,
+                country = release.country,
+                title = release.title,
+                year = release.year,
+                master = master_id,
+                url = release.url
+            )
+            stats[0] += 1
+        
+        elif overwrite:
+            Release.update(
+                release_id = r.id,
+                artist = release.artists[0].name,
+                country = release.country,
+                title = release.title,
+                year = release.year,
+                master = master_id,
+                url = release.url
+            )
+            stats[1] += 1
+
+        else:
+            stats[2] += 1
+
+        logging.info(f"Received { n + 1 } from { count } ( { stats[0] } added, { stats[1] } updated, { stats[2] } skipped) { clearline }")
+
+    logging.info("Done.")
+
+def latexTemplate(name: str):
+    env = jinja2.Environment(
+        block_start_string = "\BLOCK{",
+        block_end_string = "}",
+        variable_start_string = "\VAR{",
+        variable_end_string = "}",
+        trim_blocks = True,
+        autoescape = False,
+        loader = jinja2.FileSystemLoader(os.path.join(ENV["ROOT"], "vinyl/templates"))
+    )
+
+    return env.get_template(name)
+
+def topdf():
+    template = latexTemplate("vinyl.tex")
+    releases = list(Release.select().dicts())
+    masters = list(Master.select().dicts())
+    items = []
+
+    for n, release in enumerate(releases):
+        year_filter = list(filter(lambda o: o["master_id"] == release["master_id"], masters))
+        
+        items.append({
+            "id": n,
+            "artist": release.artist,
+            "year": year_filter[0] if year_filter else release["year"],
+            "title": release.title
+        })
+    
+    tex = template.render(items)
+
+    return tex
+        
+
+    
+
+def main():
+    ENV = setupEnvValues() 
+
+    from vinyl.db import db, Master, Release
+    db.create_tables([Master, Release])
+
+    client = setupClient()
+
+#__all__ = ["logger", "client"]
