@@ -1,7 +1,6 @@
 from peewee import *
-import vinyl
 
-db = SqliteDatabase(vinyl.ENV["VINYL_DB"])
+db = SqliteDatabase(None)
 
 class BaseModel(Model):
     class Meta:
@@ -18,7 +17,7 @@ class Release(BaseModel):
     country = TextField()
     title = TextField()
     year = IntegerField()
-    master = IntegerField(null = True) 
+    master_id = TextField(null = True) 
     url = TextField()
     
 

@@ -1,3 +1,5 @@
 peewee
 python3-discogs-client
 jinja2
+click
+toml

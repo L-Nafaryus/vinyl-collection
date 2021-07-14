@@ -1,0 +1,50 @@
+#!/usr/bin/env bash
+DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )/.."
+NAME=$(basename "$0")
+cd ${DIR}
+
+_help()
+{
+    cat <<- EOF
+Usage: $NAME [OPTIONS] COMMAND
+
+Options:
+    --help  Show this message and exit.
+
+Commands:
+    clean   Remove everything except build directory
+    init    Initialize virtual env and install requirements
+    run     Execute script in virtual env
+EOF
+}
+
+case $1 in
+    clean)
+        rm -vrf app/__pycache__ logs/ env/
+        ;;
+
+    init)
+        python -m venv env
+        source "${DIR}/env/bin/activate"
+        python -m pip install --upgrade pip
+        python -m pip install -r "${DIR}/requirements.txt"
+        deactivate
+        ;;
+
+    run)
+        source "${DIR}/env/bin/activate"
+        python -m $NAME ${@:2}
+        deactivate
+        ;;
+
+    --help)
+        _help
+        exit 1
+        ;;
+
+    *)
+        echo "Unknown command."
+        _help
+        exit 1
+        ;;
+esac

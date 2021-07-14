@@ -4,15 +4,20 @@
 
 \usepackage{geometry}
 \geometry{left = 2cm, right = 2cm, top = 0.5cm, bottom = 1.5cm}
+\linespread{1.5}
+
+\usepackage{longtable}
 
 \begin{document}
-    \begin{longtable}{l l l l}
+    \begin{longtable}{|c|l|c|l|}
     \hline
     ID & Artist & Year & Title \\
     \hline
+    \endhead
+    \hline
+    \endfoot
     \BLOCK{ for item in items }
     \VAR{ item.id } & \VAR{ item.artist } & \VAR{ item.year } & \VAR{ item.title } \\
-    \hline
     \BLOCK{ endfor }
     \end{longtable}
 \end{document}
