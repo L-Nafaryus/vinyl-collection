@@ -57,4 +57,5 @@ Dependencies
 License
 -------
 ``MIT``
+
 See ``LICENSE`` for more information.
